@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <style>
+            body {
+                text-align: center;
+                text-align: -webkit-center;
+                overflow: hidden;
+                font-family: Arial, Helvetica, sans-serif;
+            }
+            .axis,
+            .value {
+                font: 12px sans-serif;
+            }
+
+            .label {
+                font: 11px sans-serif;
+                font-weight: bold;
+            }
+
+            .axis--y path,
+            .axis--y line {
+                fill: none;
+                stroke: transparent;
+            }
+
+            .chart-title {
+                margin-bottom: 0;
+                font-size: 12px;
+                color: #555555;
+            }
+
+            .source {
+                margin-top: 0;
+                font-size: 11px;
+            }
+            #year {
+                position: absolute;
+                font-weight: bold;
+                right: 5%;
+                bottom: 20%;
+                color: #888888;
+            }
+            #replay {
+                display: none;
+                position: absolute;
+                width: 30px;
+                height: 30px;
+                border: solid 2px #888888;
+                border-radius: 100px;
+                -webkit-border-radius: 100px;
+                -moz-border-radius: 100px;
+                -o-border-radius: 100px;
+                top: 10px;
+                left: 10px;
+                cursor: pointer;
+                outline: transparent;
+                z-index: inherit;
+            }
+            #replay::before {
+                content: "";
+                width: 4px;
+                height: 18px;
+                border-left: 2px solid #888888;
+                border-radius: 5px;
+                -webkit-border-radius: 5px;
+                -moz-border-radius: 5px;
+                -o-border-radius: 5px;
+                position: absolute;
+                top: 4px;
+                left: 8px;
+            }
+            #replay::after {
+                content: "";
+                position: absolute;
+                top: 5px;
+                left: 3px;
+                width: 14px;
+                height: 14px;
+                transform: rotate(45deg) skew(-5deg, -5deg);
+                border-top: 2px solid #888888;
+                border-right: 2px solid #888888;
+                border-radius: 5px;
+            }
+            #replay:hover {
+                background-color: #555555;
+            }
+            #replay::after:hover {
+                border-top: 2px solid #ffffff;
+                border-right: 2px solid #ffffff;
+            }
+            @media screen and (max-width: 450px) {
+                .value {
+                    font: 9px sans-serif;
+                }
+                .axis {
+                    font: 8px sans-serif;
+                }
+                .label {
+                    font: 8px sans-serif;
+                    font-weight: normal;
+                }
+                .axis--x path,
+                .axis--x line {
+                    fill: none;
+                    stroke: transparent;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="wrapper">
+            <h4 class="chart-title"></h4>
+            <div class="chart"></div>
+            <div id="year">
+                <span class="year"></span>
+            </div>
+            <button id="replay"></button>
+        </div>
+        <script src="https://d3js.org/d3.v5.min.js"></script>
+        <script>
+            "use strict";
+
+            const smallDeviceWidth = 450;
+            var margin =
+                window.innerWidth < smallDeviceWidth
+                    ? { top: 10, right: 70, bottom: 10, left: 80 }
+                    : { top: 20, right: 80, bottom: 20, left: 120 };
+            var barValueMargin = window.innerWidth < smallDeviceWidth ? 30 : 40;
+            var animationInterval = 900,
+                yearFontSize = 10;
+            const width = window.innerWidth - margin.left - margin.right;
+            const height =
+                window.innerHeight * 0.8 - margin.top - margin.bottom;
+            const percentFormat = d3.format(".0%");
+            const leftPadding = 5,
+                speedValues = { 1: 1800, 2: 1500, 3: 1200, 4: 900, 5: 600 };
+            const delay = function(data, index) {
+                return index * 20;
+            };
+            var interval,
+                showYears = true;
+            const transitionDuration = d3
+                .transition()
+                .duration(animationInterval / 2);
+
+            const svg = d3
+                .select(".chart")
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const xScale = d3.scaleLinear().range([0, width]);
+
+            const yScale = d3
+                .scaleBand()
+                .rangeRound([0, height], 0.1)
+                .padding(0.1);
+
+            const dataFile =
+                "Book2.csv";
+            const colors = d3.scaleOrdinal().range(d3.schemeSet2);
+            let chartData = {};
+            window.addEventListener("load", function(event) {
+                document
+                    .querySelector("#replay")
+                    .addEventListener("click", function(clickEvent) {
+                        hideReplay();
+                        startBarChartRace();
+                    });
+                hideReplay();
+                setChartTitle("Admission Data Comparison");
+                createBarChartRace();
+            });
+
+            function clearContainer() {
+                svg.selectAll("*").remove();
+            }
+
+            function setChartTitle(title) {
+                document.querySelector(".chart-title").innerHTML = title;
+            }
+
+            function createBarChartRace() {
+                let axisLabels = [];
+                let hasIconColumn = true;
+                let icons = [];
+                d3.csv(dataFile).then(function(data) {
+                    data.forEach(function(d) {
+                        Object.keys(d).forEach(function(key) {
+                            if (key === "Country Name") {
+                                axisLabels.push(d[key]);
+                            }
+                            if (key === "Image URL") {
+                                icons.push(d[key]);
+                            }
+                        });
+                    });
+                    data.forEach(function(d, index) {
+                        Object.keys(d).forEach(function(key) {
+                            if (!isNaN(key)) {
+                                if (chartData[key]) {
+                                    chartData[key].push({
+                                        name: axisLabels[index],
+                                        icon: icons[index],
+                                        value: d[key],
+                                        fillColor: colors(index)
+                                    });
+                                } else {
+                                    chartData[key] = [];
+                                }
+                            }
+                        });
+                    });
+                    startBarChartRace();
+                });
+            }
+
+            function isEmpty(value) {
+                return value === undefined || value === null || value === "";
+            }
+
+            function startBarChartRace() {
+                stopBarChartRace();
+                clearContainer();
+                const years = Object.keys(chartData).map(d => d);
+                const lastYear = years[years.length - 1];
+                let yearCount = 0;
+                let startYear = years[yearCount];
+                let selectedData = sortData(chartData[startYear]);
+                drawChart(startYear, selectedData);
+                interval = d3.interval(() => {
+                    startYear = years[++yearCount];
+                    selectedData = sortData(chartData[startYear]);
+                    drawChart(startYear, selectedData);
+                    if (startYear === lastYear) {
+                        stopBarChartRace();
+                        showReplay();
+                    }
+                }, animationInterval);
+            }
+
+            function stopBarChartRace() {
+                if (interval) {
+                    interval.stop();
+                }
+            }
+
+            function drawChart(startYear, selectedData) {
+                let maxChartValue = Math.max(
+                    ...selectedData.map(function(data) {
+                        return isNaN(xAccessor(data)) ? 0 : xAccessor(data);
+                    })
+                );
+                xScale.domain([0, maxChartValue]);
+                drawXAxis();
+                if (showYears) {
+                    d3.select(".year")
+                        .text(startYear)
+                        .style(
+                            "font-size",
+                            window.innerWidth < smallDeviceWidth
+                                ? "25px"
+                                : yearFontSize + "vw"
+                        );
+                }
+                yScale.domain(selectedData.map(yAccessor));
+                drawYAxis();
+                drawBars(selectedData);
+            }
+
+            function sortData(data) {
+                if (data) {
+                    return removeEmptyRows(
+                        data
+                            .sort((a, b) => b.value - a.value)
+                            .slice(0, Math.min(10, data.length))
+                    );
+                }
+            }
+
+            function removeEmptyRows(sortedData) {
+                return sortedData.filter(function(data) {
+                    return data.value > 0;
+                });
+            }
+
+            function xAccessor(d) {
+                return Number(d.value);
+            }
+
+            function yAccessor(d) {
+                return d.name;
+            }
+
+            function drawXAxis() {
+                let axis = svg.select(".axis--x");
+                if (axis.empty()) {
+                    axis = svg
+                        .append("g")
+                        .attr("class", "axis axis--x")
+                        .attr(
+                            "transform",
+                            `translate(${leftPadding},${height})`
+                        );
+                }
+                axis.transition(transitionDuration)
+                    .call(
+                        d3.axisBottom(xScale).tickFormat(function(xLabel) {
+                            let format = d3.format(".2s");
+                            if (window.innerWidth < smallDeviceWidth) {
+                                return "";
+                            } else {
+                                return format(xLabel);
+                            }
+                        })
+                    )
+                    .selectAll("g")
+                    .delay(delay);
+            }
+
+            function drawYAxis() {
+                let axis = svg.select(".axis--y");
+                if (axis.empty()) {
+                    axis = svg.append("g").attr("class", "axis axis--y");
+                }
+                axis.transition(transitionDuration)
+                    .call(
+                        d3.axisLeft(yScale).tickFormat(function(yLabel) {
+                            let textLimit =
+                                window.innerWidth < smallDeviceWidth ? 15 : 20;
+                            return yLabel.length < textLimit
+                                ? yLabel
+                                : yLabel.substr(0, textLimit - 3) + "...";
+                        })
+                    )
+                    .selectAll("g")
+                    .delay(delay);
+            }
+
+            function drawBars(data) {
+                let barsG = svg.select(".bars-g");
+                if (barsG.empty()) {
+                    barsG = svg.append("g").attr("class", "bars-g");
+                }
+
+                const bars = barsG.selectAll(".bar").data(data, yAccessor);
+                bars.exit().remove();
+                bars.enter()
+                    .append("rect")
+                    .attr("x", leftPadding)
+                    .attr("class", "bar")
+                    .style("fill", function(d) {
+                        return d.fillColor;
+                    })
+                    .merge(bars)
+                    .transition(transitionDuration)
+                    .attr("y", d => yScale(yAccessor(d)))
+                    .attr("width", d => xScale(xAccessor(d)))
+                    .attr("height", yScale.bandwidth())
+                    .delay(delay);
+
+                const values = barsG.selectAll(".value").data(data, yAccessor);
+                values.exit().remove();
+                values
+                    .enter()
+                    .append("text")
+                    .attr("class", "value")
+                    .attr("text-anchor", "middle")
+                    .merge(values)
+                    .transition(transitionDuration)
+                    .attr("y", function(d) {
+                        return yScale(yAccessor(d)) + yScale.bandwidth() / 1.4;
+                    })
+                    .attr("x", function(d) {
+                        return xScale(xAccessor(d)) + barValueMargin;
+                    })
+                    .text(function(d) {
+                        return xAccessor(d).toLocaleString("en-US");
+                    });
+
+                const images = barsG.selectAll(".icon").data(data, yAccessor);
+                images.exit().remove();
+                images
+                    .enter()
+                    .append("image")
+                    .attr("class", "icon")
+                    .merge(images)
+                    .transition(transitionDuration)
+                    .attr("xlink:href", function(d) {
+                        return d.icon;
+                    })
+                    .attr("y", function(d) {
+                        let yPosition = yScale(yAccessor(d));
+                        let offset = (yScale.bandwidth() - getImageSize(d)) / 2;
+                        return yPosition + offset;
+                    })
+                    .attr("x", function(d) {
+                        let xPosition = xScale(xAccessor(d));
+                        let imageSize = getImageSize(d);
+                        return xPosition - imageSize + 2;
+                    })
+                    .attr("width", getImageSize)
+                    .attr("height", getImageSize);
+            }
+
+            function getImageSize(barData) {
+                if (
+                    window.innerWidth < smallDeviceWidth &&
+                    xScale(xAccessor(barData)) < yScale.bandwidth()
+                ) {
+                    return 0;
+                } else {
+                    return Math.min(
+                        yScale.bandwidth() - 2,
+                        xScale(xAccessor(barData)) - 4
+                    );
+                }
+            }
+
+            function showReplay() {
+                document.querySelector("#replay").style.display = "block";
+            }
+
+            function hideReplay() {
+                document.querySelector("#replay").style.display = "none";
+            }
+        </script>
+    </body>
+</html>

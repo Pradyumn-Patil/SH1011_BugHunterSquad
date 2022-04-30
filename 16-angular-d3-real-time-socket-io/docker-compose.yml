@@ -1,0 +1,33 @@
+version: '3'
+
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: ./Dockerfile
+    container_name: 'angular-d3-real-time-socket-io-server'
+    # Automatically hot reload code changes in the Docker container
+    volumes:
+      - ./server/src:/app/src
+      # We are specifying an anonymous volume here so that our local node_modules directory does not override node_modules installed in our container
+      - '/app/node_modules'
+    command: sh -c './node_modules/.bin/nodemon ./src/index.js -e js,json'
+    ports:
+      - "3000:3000"
+      - "9229:9229"
+
+  client:
+    build:
+      context: ./app
+      dockerfile: ./Dockerfile
+    container_name: 'angular-d3-real-time-socket-io-client'
+    command: sh -c "ng serve --host 0.0.0.0 --port 4200"
+    ports:
+      - "4200:4200"
+      - "9876:9876"
+    # Automatically hot reload code changes in the Docker container
+    volumes:
+      - ./app:/app
+      - ./app/src:/app/src
+    depends_on:
+      - server

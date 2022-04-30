@@ -1,0 +1,20 @@
+/* Original example used SCSS; this component was generated using CSS as the default styling */
+
+/* Use the height and width of the chart container */
+#chart {
+  width: inherit;
+  height: inherit;
+}
+
+.bar {
+  fill: steelblue;
+}
+
+.bar:hover {
+  fill: brown;
+}
+
+.axis--x path {
+  /* Set to display: none; if you don't want the x axis to appear */
+  display: none;
+}

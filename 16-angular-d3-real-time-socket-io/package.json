@@ -1,0 +1,15 @@
+{
+  "name": "16-angular-d3-real-time-socket-io",
+  "version": "0.0.0",
+  "description": "This example requires you have [Docker Desktop](https://www.docker.com/products/docker-desktop) installed and configured on your development machine. It was based off the tutorial [Real-Time Charts using Angular, D3, and Socket.IO](https://auth0.com/blog/real-time-charts-using-angular-d3-and-socket-io/).",
+  "main": "index.js",
+  "scripts": {
+    "ng": "ng",
+    "start": "docker-compose up",
+    "build": "docker-compose up --remove-orphans --build --force-recreate",
+    "stop": "docker-compose down",
+    "docker:nuke": "docker system prune -a && docker volume prune"
+  },
+  "author": "Rob Brennan <rob@therobbrennan.com>",
+  "license": "ISC"
+}
