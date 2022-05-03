@@ -1,5 +1,5 @@
 # SH1011_BugHunterSquad
-this project scontains a system for multi-hazard visualization as per location selected by individual.
+this projects contains sample visualizations for multi-hazard visualization as per location selected by individual.
 
 ## Problem statement 
 Disaster is one of the most devastating disruptions of life that is caused by nature or man-made situations. The phenomena that may occur are floods, earthquakes, volcanic eruptions, typhoons, etc. These may happen around the world and necessary precautionary measures should be taken into considerations for humans to survive and have a sustainable life.
